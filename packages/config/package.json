@@ -1,0 +1,13 @@
+{
+  "name": "@centrale-ucl/config",
+  "version": "1.0.0",
+  "description": "Shared configuration for Centrale UCL Manager",
+  "private": true,
+  "main": "index.js",
+  "files": [
+    "eslint-preset.js",
+    "prettier.config.js",
+    "tsconfig.json",
+    "commitlint.config.js"
+  ]
+}
