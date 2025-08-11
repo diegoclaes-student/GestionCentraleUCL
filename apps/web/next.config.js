@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    appDir: true,
+    serverComponentsExternalPackages: ['@centrale-ucl/schemas'],
   },
   images: {
     domains: ['localhost'],
@@ -12,6 +12,7 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: false,
   },
+  transpilePackages: ['@centrale-ucl/schemas', '@centrale-ucl/ui'],
 };
 
 module.exports = nextConfig;

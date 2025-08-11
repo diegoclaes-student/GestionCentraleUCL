@@ -1,0 +1,4 @@
+
+> @centrale-ucl/schemas@1.0.0 typecheck /home/runner/work/GestionCentraleUCL/GestionCentraleUCL/packages/schemas
+> tsc --noEmit
+
