@@ -1,0 +1,19 @@
+{
+  "name": "@centrale-ucl/schemas",
+  "version": "1.0.0",
+  "description": "Shared Zod schemas and TypeScript types",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}

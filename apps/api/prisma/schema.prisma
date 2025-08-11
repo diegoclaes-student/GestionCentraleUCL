@@ -1,0 +1,321 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PRESIDENT
+  VICE_PRESIDENT
+  TRESORIER
+  SECRETAIRE
+  EVENT_LEAD
+  COMMS_LEAD
+  PARTNER_LEAD
+  DESIGNER
+  LOGISTICS
+  MEMBER
+  ALUMNI
+  STAFF
+}
+
+enum MembershipStatus {
+  ACTIVE
+  PENDING
+  INACTIVE
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+enum EventVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum TicketStatus {
+  RESERVED
+  PAID
+  CHECKED_IN
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  STRIPE
+}
+
+enum ExpenseStatus {
+  SUBMITTED
+  APPROVED
+  PAID
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  firstName String
+  lastName  String
+  phone     String?
+  studentId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isActive  Boolean  @default(true)
+
+  // Relations
+  memberships  Membership[]
+  userRoles    UserRole[]
+  tickets      Ticket[]
+  payments     Payment[]
+  duePayments  DuePayment[]
+  expenses     Expense[]    @relation("ExpenseSubmitter")
+  approvals    Expense[]    @relation("ExpenseApprover")
+  orders       Order[]
+  auditLogs    AuditLog[]
+
+  @@map("users")
+}
+
+model Membership {
+  id      String           @id @default(cuid())
+  userId  String
+  status  MembershipStatus
+  startAt DateTime
+  endAt   DateTime?
+  circle  String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("memberships")
+}
+
+model UserRole {
+  id     String  @id @default(cuid())
+  userId String
+  role   Role
+  scope  String? // global | eventId | teamId
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_roles")
+}
+
+model Sponsor {
+  id           String  @id @default(cuid())
+  name         String
+  tier         String
+  contactEmail String
+  notes        String?
+
+  @@map("sponsors")
+}
+
+model Event {
+  id           String          @id @default(cuid())
+  title        String
+  slug         String          @unique
+  description  String
+  location     String
+  startAt      DateTime
+  endAt        DateTime
+  capacity     Int?
+  status       EventStatus
+  budgetTarget Int?
+  visibility   EventVisibility
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  // Relations
+  ticketTypes TicketType[]
+  tickets     Ticket[]
+  payments    Payment[]
+  expenses    Expense[]
+
+  @@map("events")
+}
+
+model TicketType {
+  id         String  @id @default(cuid())
+  eventId    String
+  name       String
+  priceCents Int
+  taxRate    Float   @default(0.0)
+  quota      Int?
+  memberOnly Boolean @default(false)
+
+  event   Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tickets Ticket[]
+
+  @@map("ticket_types")
+}
+
+model Ticket {
+  id           String       @id @default(cuid())
+  code         String       @unique @default(cuid())
+  eventId      String
+  userId       String?
+  ticketTypeId String
+  purchasedAt  DateTime?
+  checkedInAt  DateTime?
+  status       TicketStatus
+
+  event      Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user       User?      @relation(fields: [userId], references: [id])
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id])
+
+  @@map("tickets")
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  userId      String?
+  eventId     String?
+  amountCents Int
+  currency    String        @default("EUR")
+  method      PaymentMethod
+  providerId  String
+  status      PaymentStatus
+  createdAt   DateTime      @default(now())
+
+  user       User?        @relation(fields: [userId], references: [id])
+  event      Event?       @relation(fields: [eventId], references: [id])
+  duePayment DuePayment[]
+
+  @@map("payments")
+}
+
+model Dues {
+  id          String   @id @default(cuid())
+  season      String
+  amountCents Int
+  dueDate     DateTime
+  description String
+
+  duePayments DuePayment[]
+
+  @@map("dues")
+}
+
+model DuePayment {
+  id        String        @id @default(cuid())
+  dueId     String
+  userId    String
+  paymentId String?
+  status    PaymentStatus
+
+  due     Dues     @relation(fields: [dueId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment Payment? @relation(fields: [paymentId], references: [id])
+
+  @@map("due_payments")
+}
+
+model Expense {
+  id           String        @id @default(cuid())
+  label        String
+  amountCents  Int
+  eventId      String?
+  category     String
+  receiptUrl   String?
+  submittedBy  String
+  approvedBy   String?
+  status       ExpenseStatus
+  createdAt    DateTime      @default(now())
+
+  event     Event? @relation(fields: [eventId], references: [id])
+  submitter User   @relation("ExpenseSubmitter", fields: [submittedBy], references: [id])
+  approver  User?  @relation("ExpenseApprover", fields: [approvedBy], references: [id])
+
+  @@map("expenses")
+}
+
+model InventoryItem {
+  id               String  @id @default(cuid())
+  sku              String  @unique
+  name             String
+  qty              Int
+  unitCostCents    Int
+  resalePriceCents Int?
+  location         String?
+
+  @@map("inventory_items")
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  buyerUserId String?
+  totalCents  Int
+  status      OrderStatus
+  paymentId   String?
+  createdAt   DateTime    @default(now())
+
+  buyer User? @relation(fields: [buyerUserId], references: [id])
+
+  @@map("orders")
+}
+
+model CommunicationTemplate {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  subject   String
+  bodyMjml  String
+  variables String[] // JSON array of variable names
+
+  @@map("communication_templates")
+}
+
+model Announcement {
+  id      String    @id @default(cuid())
+  title   String
+  body    String
+  targets Json // Query JSON for targeting
+  sentAt  DateTime?
+
+  @@map("announcements")
+}
+
+model Document {
+  id     String   @id @default(cuid())
+  name   String
+  url    String
+  tags   String[]
+  access Role // Minimum role required to access
+
+  @@map("documents")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorUserId String?
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation(fields: [actorUserId], references: [id])
+
+  @@map("audit_logs")
+}
